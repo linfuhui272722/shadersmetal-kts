@@ -53,6 +53,11 @@ dependencies {
     implementation(files("libs/metallum-1.0.1.jar"))
     compileOnly(files("libs/sodium-fabric-0.9.1+mc26.2.jar"))
 }
+configurations {
+    // 强制让 'main' 源集的编译路径继承 'client' 源集的依赖
+    // 这样就能在 src/main/java 里直接编译 net.minecraft.client.xxx 的代码
+    configurations.getByName("compileClasspath").extendsFrom(configurations.getByName("clientCompileClasspath"))
+}
 
 java {
     toolchain {
