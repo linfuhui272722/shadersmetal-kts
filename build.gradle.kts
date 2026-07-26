@@ -67,7 +67,10 @@ dependencies {
     // 这绕过了 Loom 可能存在的依赖解析问题，直接提供客户端类
     implementation(files("libs/minecraft-26.2-client.jar"))
 }
-
+// 强制将本地 Minecraft 客户端 jar 加入编译 classpath
+tasks.named<JavaCompile>("compileJava") {
+    classpath = classpath.plus(files("libs/minecraft-26.2-client.jar"))
+}
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(javaVersion.toInt())
