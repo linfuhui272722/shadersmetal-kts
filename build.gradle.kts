@@ -42,7 +42,6 @@ loom {
 }
 
 // 确保编译时使用正确的 Java 版本
-
 dependencies {
     // Minecraft 26.2 —— 无混淆，不需要 mappings 依赖。
     // Loom 会自动下载 MC jar、合并 client+server、加到 compileClasspath。
@@ -73,7 +72,8 @@ java {
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
-    options.release.set((property("java_version") as String).toInt())
+    // 修复：必须使用 project.property(...)，否则会尝试读取 Task 的属性导致报错
+    options.release.set((project.property("java_version") as String).toInt())
 }
 
 tasks.withType<ProcessResources> {
@@ -88,6 +88,7 @@ tasks.withType<ProcessResources> {
 // Native build: 编译 JNI shim 为 libmetallum_shaders.dylib
 // 仅在 macOS 上编译；非 macOS 跳过（jar 仍能构建，只是没有 dylib）。
 // ===========================================================================
+
 val nativeSrcDir = layout.projectDirectory.dir("src/main/cpp")
 val nativeOutDir = layout.buildDirectory.dir("native")
 val macosArmDylib = nativeOutDir.map { it.file("macos-arm64/libmetallum_shaders.dylib") }
@@ -95,7 +96,9 @@ val macosArmDylib = nativeOutDir.map { it.file("macos-arm64/libmetallum_shaders.
 val buildNativeArm64 by tasks.registering(Exec::class) {
     group = "build"
     description = "Compile the Metal JNI shim for ARM64 (macOS only)."
+
     onlyIf { System.getProperty("os.name").lowercase().contains("mac") }
+
     outputs.file(macosArmDylib)
     inputs.file(nativeSrcDir.file("metallum_shaders.cpp"))
 
@@ -104,13 +107,18 @@ val buildNativeArm64 by tasks.registering(Exec::class) {
             .redirectErrorStream(true)
             .start()
             .inputStream.bufferedReader().readText().trim()
+
         val javaHome = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
+
         val outDir = nativeOutDir.get().asFile.resolve("macos-arm64")
         outDir.mkdirs()
+
         commandLine(
             "clang++",
             "-x", "objective-c++",
-            "-std=c++17", "-stdlib=libc++", "-fobjc-arc",
+            "-std=c++17",
+            "-stdlib=libc++",
+            "-fobjc-arc",
             "-arch", "arm64",
             "-I", "$sdk/System/Library/Frameworks/Metal.framework/Headers",
             "-I", "$sdk/System/Library/Frameworks/Foundation.framework/Headers",
@@ -119,7 +127,8 @@ val buildNativeArm64 by tasks.registering(Exec::class) {
             "-F", "$sdk/System/Library/Frameworks",
             "-framework", "Metal",
             "-framework", "Foundation",
-            "-shared", "-dynamiclib",
+            "-shared",
+            "-dynamiclib",
             "-o", macosArmDylib.get().asFile.absolutePath,
             nativeSrcDir.file("metallum_shaders.cpp").asFile.absolutePath
         )
