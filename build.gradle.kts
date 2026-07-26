@@ -41,7 +41,7 @@ sourceSets {
 
 loom {
     accessWidenerPath = file("src/main/resources/metallum.accesswidener")
-
+    customMinecraftJar.set(file("libs/minecraft-26.2-client.jar"))
     mods {
         register("metallum_shaders") {
             sourceSet(sourceSets.main.get())
@@ -55,7 +55,7 @@ loom {
 }
 
 dependencies {
-    add("minecraft", files("libs/minecraft-26.2-client.jar"))
+    //add("minecraft", files("libs/minecraft-26.2-client.jar"))
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
     
