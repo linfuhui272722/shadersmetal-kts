@@ -5,17 +5,80 @@ import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     id("java")
-    id("net.fabricmc.fabric-loom") version ("1.17.13")
+    id("net.fabricmc.fabric-loom") version("1.17.13")
     id("maven-publish")
 }
 
-group = property("maven_group") as String
-version = property("mod_version") as String
+// 定义版本变量（从gradle.properties中读取）
+val MINECRAFT_VERSION by extra { property("minecraft_version") as String }
+val JAVA_VERSION by extra { property("java_version") as String }
+val MOD_VERSION by extra { property("mod_version") as String }
+val ARCHIVES_BASE_NAME by extra { property("archives_base_name") as String }
+val LOADER_VERSION by extra { property("loader_version") as String }
+val FABRIC_VERSION by extra { property("fabric_version") as String }
+val MAVEN_GROUP by extra { property("maven_group") as String }
 
-base {
-    archivesName.set(property("archives_base_name") as String)
+allprojects {
+    apply(plugin = "java")
+    apply(plugin = "maven-publish")
 }
 
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+}
+
+subprojects {
+    apply(plugin = "maven-publish")
+
+    java.toolchain.languageVersion = JavaLanguageVersion.of(JAVA_VERSION.toInt())
+
+    fun createVersionString(): String {
+        val builder = StringBuilder()
+
+        val isReleaseBuild = project.hasProperty("build.release")
+        val buildId = System.getenv("GITHUB_RUN_NUMBER")
+
+        if (isReleaseBuild) {
+            builder.append(MOD_VERSION)
+        } else {
+            builder.append(MOD_VERSION.substringBefore('-'))
+            builder.append("-snapshot")
+        }
+
+        builder.append("+mc").append(MINECRAFT_VERSION)
+
+        if (!isReleaseBuild) {
+            if (buildId != null) {
+                builder.append("-build.${buildId}")
+            } else {
+                builder.append("-local")
+            }
+        }
+
+        return builder.toString()
+    }
+
+    tasks.processResources {
+        filesMatching("fabric.mod.json") {
+            expand(mapOf("version" to createVersionString()))
+        }
+    }
+
+    version = createVersionString()
+    group = MAVEN_GROUP
+
+    tasks.withType<JavaCompile> {
+        options.encoding = "UTF-8"
+        options.release.set(JAVA_VERSION.toInt())
+    }
+
+    // Disables Gradle's custom module metadata from being published to maven
+    tasks.withType<GenerateModuleMetadata>().configureEach {
+        enabled = false
+    }
+}
+
+// 原项目的特定配置
 repositories {
     mavenCentral()
     maven { url = uri("https://maven.fabricmc.net/") }
@@ -24,10 +87,6 @@ repositories {
 }
 
 loom {
-    // 不使用 splitEnvironmentSourceSets()。
-    // 所有代码（含客户端代码）都在 src/main/java/ 下，
-    // main 源集需要看到 net.minecraft.client.* 类。
-    // Loom 会自动把 Minecraft merged jar 加到 main 源集的编译类路径上。
     mods {
         register("metallum_shaders") {
             sourceSet("main")
@@ -41,47 +100,22 @@ loom {
     }
 }
 
-// 确保编译时使用正确的 Java 版本
 dependencies {
-    // Minecraft 26.2 —— 无混淆，不需要 mappings 依赖。
-    // Loom 会自动下载 MC jar、合并 client+server、加到 compileClasspath。
-    minecraft("com.mojang:minecraft:${property("minecraft_version")}")
-
-    // Fabric Loader + Fabric API
-    // 用 implementation（非 modImplementation）。MC 26.2 无混淆，
-    // Loom 不需要做 remap，implementation 即可。
-    implementation("net.fabricmc:fabric-loader:${property("loader_version")}")
-    implementation("net.fabricmc.fabric-api:fabric-api:${property("fabric_version")}")
-
-    // Metallum —— Metal API 桥接 mod（本地 jar）
+    minecraft("com.mojang:minecraft:${MINECRAFT_VERSION}")
+    implementation("net.fabricmc:fabric-loader:${LOADER_VERSION}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${FABRIC_VERSION}")
     implementation(files("libs/metallum-1.0.1.jar"))
-
-    // Sodium —— 仅编译期依赖，不打包进 jar
     compileOnly(files("libs/sodium-fabric-0.9.1+mc26.2.jar"))
 }
 
+base {
+    archivesName.set(ARCHIVES_BASE_NAME)
+}
+
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of((property("java_version") as String).toInt())
-        vendor = JvmVendorSpec.ADOPTIUM
-    }
     withSourcesJar()
-    sourceCompatibility = JavaVersion.toVersion((property("java_version") as String).toInt())
-    targetCompatibility = JavaVersion.toVersion((property("java_version") as String).toInt())
-}
-
-tasks.withType<JavaCompile> {
-    options.encoding = "UTF-8"
-    // 修复：必须使用 project.property(...)，否则会尝试读取 Task 的属性导致报错
-    options.release.set((project.property("java_version") as String).toInt())
-}
-
-tasks.withType<ProcessResources> {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    inputs.property("version", project.version)
-    filesMatching("fabric.mod.json") {
-        expand(mapOf("version" to project.version))
-    }
+    sourceCompatibility = JavaVersion.toVersion(JAVA_VERSION.toInt())
+    targetCompatibility = JavaVersion.toVersion(JAVA_VERSION.toInt())
 }
 
 // ===========================================================================
