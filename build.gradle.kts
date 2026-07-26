@@ -64,7 +64,7 @@ dependencies {
     // 强制注入手动下载的 Minecraft 客户端 Jar
     // 对应 codemagic.yaml 中的下载步骤
     // 这绕过了 Loom 可能存在的依赖解析问题，直接提供客户端类
-    compileOnly(files("libs/minecraft-26.2-client.jar"))
+    implementation(files("libs/minecraft-26.2-client.jar"))
 }
 
 java {
