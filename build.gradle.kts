@@ -31,7 +31,8 @@ repositories {
 }
 
 loom {
-    enableTransitiveAccessWidening = true
+    enableTransitiveAccessWideners = true  // ✅ 正确的属性名（注意是复数 Wideners）
+
     mods {
         register("metallum_shaders") {
             sourceSet("main")
