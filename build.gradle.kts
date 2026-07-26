@@ -29,7 +29,12 @@ repositories {
     maven { url = uri("https://libraries.minecraft.net/") }
     maven { url = uri("https://maven.caffeinemc.net/releases") }
 }
-
+sourceSets {
+    create("client") {
+        compileClasspath += sourceSets.main.get().compileClasspath
+        runtimeClasspath += sourceSets.main.get().runtimeClasspath
+    }
+}
 loom {
     // 如果确实需要 transitive AW（一般默认开启，可省略）
     enableTransitiveAccessWideners = true  // 如果找不到这个属性就删掉
@@ -50,7 +55,6 @@ loom {
     }
 
     // 如果不想用旧的 mixin AP，这一行其实可以省略（默认就是 false）
-    useLegacyMixinAp = false
 }
 
 dependencies {
