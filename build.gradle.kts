@@ -28,7 +28,7 @@ repositories {
 maven { name = "LocalMinecraft"
         url = uri("file://${project.projectDir}/maven_repo") }
     maven { url = uri("https://maven.fabricmc.net/") }
-    maven { url = uri("https://libraries.minecraft.net/") }
+    //maven { url = uri("https://libraries.minecraft.net/") }
     maven { url = uri("https://maven.caffeinemc.net/releases") }
 }
 sourceSets {
@@ -41,7 +41,6 @@ sourceSets {
 
 loom {
     accessWidenerPath = file("src/main/resources/metallum.accesswidener")
-    customMinecraftJar.set(file("libs/minecraft-26.2-client.jar"))
     mods {
         register("metallum_shaders") {
             sourceSet(sourceSets.main.get())
@@ -55,7 +54,7 @@ loom {
 }
 
 dependencies {
-    //add("minecraft", files("libs/minecraft-26.2-client.jar"))
+    minecraft("com.mojang:minecraft:26.2")
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
     
