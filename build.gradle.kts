@@ -31,22 +31,26 @@ repositories {
 }
 
 loom {
-    // 修复：使用正确的属性名（复数形式）
-    enableTransitiveAccessWideners = true
+    // 如果确实需要 transitive AW（一般默认开启，可省略）
+    enableTransitiveAccessWideners = true  // 如果找不到这个属性就删掉
+
     accessWidenerPath = file("src/main/resources/metallum.accesswidener")
-    
+
     mods {
         register("metallum_shaders") {
-            sourceSet("main")
-            sourceSet("client")
+            sourceSet(sourceSets.main.get())
+            sourceSet(sourceSets.client.get())
         }
     }
 
-    @Suppress("UnstableApiUsage")
+    // 如果不需要 mixin 注解处理器，可以完全删除 mixin 块
+    // 如果需要配置 refmap，保留下面这段
     mixin {
         defaultRefmapName.set("metallum_shaders.refmap.json")
-        useLegacyMixinAp = false
     }
+
+    // 如果不想用旧的 mixin AP，这一行其实可以省略（默认就是 false）
+    useLegacyMixinAp = false
 }
 
 dependencies {
