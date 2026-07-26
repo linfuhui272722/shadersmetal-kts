@@ -15,6 +15,7 @@ val mavenGroup = property("maven_group") as String
 val modVersion = property("mod_version") as String
 val archivesBaseName = property("archives_base_name") as String
 val minecraftVersion = property("minecraft_version") as String
+val javaVersion: String by project
 val loaderVersion = property("loader_version") as String
 val fabricVersion = property("fabric_version") as String
 
