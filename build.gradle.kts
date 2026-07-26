@@ -67,10 +67,25 @@ dependencies {
     // 这绕过了 Loom 可能存在的依赖解析问题，直接提供客户端类
     implementation(files("libs/minecraft-26.2-client.jar"))
 }
-// 强制将本地 Minecraft 客户端 jar 加入编译 classpath
-afterEvaluate {
-    tasks.named<JavaCompile>("compileJava") {
-        classpath += files("libs/minecraft-26.2-client.jar")
+// 强制将本地 Minecraft 客户端 jar 加入编译 classpathafterEvaluate {
+tasks.named<JavaCompile>("compileJava") {
+        // 在任务执行前，将本地 Minecraft jar 强制插入 classpath
+    doFirst {
+            val minecraftJar = file("libs/minecraft-26.2-client.jar")
+            if (minecraftJar.exists()) {
+                logger.lifecycle("=== Manually adding Minecraft jar to compileJava classpath ===")
+                // 获取当前 classpath 的 FileCollection，并将 jar 加入
+                val originalClasspath = classpath
+                classpath = files(minecraftJar) + originalClasspath
+                // 打印完整 classpath 用于验证
+                logger.lifecycle("=== Final compileJava classpath ===")
+                classpath.files.forEach { file ->
+                    logger.lifecycle(file.absolutePath)
+                }
+            } else {
+            throw GradleException("Minecraft client jar not found at ${minecraftJar.absolutePath}")
+            }
+        }
     }
 }
 java {
