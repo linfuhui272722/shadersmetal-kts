@@ -5,24 +5,17 @@ pluginManagement {
         gradlePluginPortal()
         mavenCentral()
     }
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "fabric-loom") {
-                useModule("net.fabricmc:fabric-loom:${requested.version}")
-            }
-        }
-    }
+    
 }
-gradle.beforeProject {
-    buildscript {
-        configurations.all {
-            attributes {
-                attribute(
-                    org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE,
-                    21 // 假装我们需要 Java 21，这样就能匹配到 fabric-loom 的变体
-                )
-            }
-        }
+// settings.gradle.kts
+plugins {
+    id("org.gradle.toolchains.fake") // 占位，实际上 Gradle 会自动处理
+}
+
+// 声明构建所需的 Java 工具链（给构建脚本和插件用）
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 rootProject.name = "MetallumShaders"
