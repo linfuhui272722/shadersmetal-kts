@@ -22,7 +22,8 @@ workflows:
           include: true
         - pattern: develop
           include: true
-    cancel_previous_builds: true
+      # 修复：将 cancel_previous_builds 移动到 triggering 内部，符合 schema 校验
+      cancel_previous_builds: true
     cache:
       cache_paths:
         - ~/.gradle/caches
