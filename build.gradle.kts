@@ -150,21 +150,15 @@ tasks.named<Jar>("jar") {
     }
 }
 
-// 强制将本地 Minecraft 客户端 jar 加入编译 classpath
+// 将以下代码放在文件末尾（在 tasks.named<Jar>("jar") 之后）
+
 afterEvaluate {
+    val minecraftJar = file("libs/minecraft-26.2-client.jar")
+    if (!minecraftJar.exists()) {
+        throw GradleException("Minecraft client jar not found at ${minecraftJar.absolutePath}")
+    }
+    // 直接修改 compileJava 的 classpath（在配置阶段）
     tasks.named<JavaCompile>("compileJava") {
-        doFirst {
-            val minecraftJar = file("libs/minecraft-26.2-client.jar")
-            if (!minecraftJar.exists()) {
-                throw GradleException("Minecraft client jar not found at ${minecraftJar.absolutePath}")
-            }
-            // 直接修改 javac 的 classpath 参数
-            val separator = if (System.getProperty("os.name").lowercase().contains("win")) ";" else ":"
-            val currentCp = options.compilerArgumentProviders.firstOrNull()?.asArguments?.joinToString(separator) ?: ""
-            options.compilerArgumentProviders.clear()
-            options.compilerArgumentProviders.add(object : CommandLineArgumentProvider {
-                override fun asArguments() = listOf("-classpath", listOf(currentCp, minecraftJar.absolutePath).filter { it.isNotEmpty() }.joinToString(separator))
-            })
-        }
+        classpath = files(minecraftJar) + classpath
     }
 }
