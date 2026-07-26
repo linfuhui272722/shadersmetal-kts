@@ -155,11 +155,16 @@ afterEvaluate {
     tasks.named<JavaCompile>("compileJava") {
         doFirst {
             val minecraftJar = file("libs/minecraft-26.2-client.jar")
-            if (minecraftJar.exists()) {
-                classpath = files(minecraftJar) + classpath
-            } else {
+            if (!minecraftJar.exists()) {
                 throw GradleException("Minecraft client jar not found at ${minecraftJar.absolutePath}")
             }
+            // 直接修改 javac 的 classpath 参数
+            val separator = if (System.getProperty("os.name").lowercase().contains("win")) ";" else ":"
+            val currentCp = options.compilerArgumentProviders.firstOrNull()?.asArguments?.joinToString(separator) ?: ""
+            options.compilerArgumentProviders.clear()
+            options.compilerArgumentProviders.add(object : CommandLineArgumentProvider {
+                override fun asArguments() = listOf("-classpath", listOf(currentCp, minecraftJar.absolutePath).filter { it.isNotEmpty() }.joinToString(separator))
+            })
         }
     }
 }
