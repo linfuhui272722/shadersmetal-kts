@@ -31,6 +31,7 @@ repositories {
 }
 
 loom {
+    enableTransitiveAccessWidening = true
     mods {
         register("metallum_shaders") {
             sourceSet("main")
