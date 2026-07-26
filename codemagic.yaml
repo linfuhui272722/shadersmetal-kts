@@ -22,7 +22,6 @@ workflows:
           include: true
         - pattern: develop
           include: true
-      # 修复：将 cancel_previous_builds 移动到 triggering 内部，符合 schema 校验
       cancel_previous_builds: true
     cache:
       cache_paths:
@@ -80,17 +79,73 @@ workflows:
           
           ls -la libs/
 
-      - name: Download Minecraft Client JAR
+      - name: Download and Verify Minecraft Client JAR
         script: |
           #!/usr/bin/env bash
           set -e
-          echo "Downloading Minecraft Client JAR (Manual Fix)..."
+          echo "=== Downloading and Verifying Minecraft Client JAR ==="
           mkdir -p libs
-          # 从 Mojang 官方仓库强制下载客户端 Jar
-          curl -L -o libs/minecraft-26.2-client.jar \
-            "https://libraries.minecraft.net/com/mojang/minecraft/26.2/minecraft-26.2-client.jar" \
-            || { echo "ERROR: Failed to download MC Client JAR"; exit 1; }
-          ls -la libs/minecraft-26.2-client.jar
+          
+          MC_JAR="libs/minecraft-26.2-client.jar"
+          MC_URL="https://libraries.minecraft.net/com/mojang/minecraft/26.2/minecraft-26.2-client.jar"
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          download_and_verify() {
+            # 使用 wget 进行下载，支持断点续传
+            echo "Attempting to download Minecraft Client JAR (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
+            
+            # 删除可能存在的部分下载文件
+            rm -f "$MC_JAR"
+            
+            # 使用 wget 下载，设置超时和重试
+            if ! wget --timeout=30 --tries=2 -O "$MC_JAR" "$MC_URL"; then
+              echo "ERROR: Failed to download Minecraft Client JAR using wget"
+              return 1
+            fi
+            
+            # 验证文件是否为有效的 ZIP 文件
+            if ! unzip -t "$MC_JAR" > /dev/null 2>&1; then
+              echo "ERROR: Downloaded file is not a valid ZIP archive"
+              rm -f "$MC_JAR"
+              return 1
+            fi
+            
+            # 验证文件大小是否合理（大于 10MB）
+            FILE_SIZE=$(stat -f%z "$MC_JAR" 2>/dev/null || stat -c%s "$MC_JAR" 2>/dev/null || echo "0")
+            if [ "$FILE_SIZE" -lt 10485760 ]; then
+              echo "ERROR: Downloaded file is too small ($FILE_SIZE bytes), likely incomplete"
+              rm -f "$MC_JAR"
+              return 1
+            fi
+            
+            # 列出部分内容以进一步验证
+            echo "Downloaded file size: $FILE_SIZE bytes"
+            echo "Sample contents:"
+            jar tf "$MC_JAR" | head -5 || true
+            
+            echo "SUCCESS: Minecraft Client JAR downloaded and verified"
+            return 0
+          }
+          
+          # 重试下载逻辑
+          until download_and_verify; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+              echo "ERROR: Failed to download and verify Minecraft Client JAR after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            echo "Waiting before retry..."
+            sleep 5
+          done
+          
+          # 最终验证
+          if [ ! -f "$MC_JAR" ]; then
+            echo "ERROR: Minecraft Client JAR does not exist after download attempts"
+            exit 1
+          fi
+          
+          echo "=== Minecraft Client JAR ready ==="
 
       - name: Setup Gradle Wrapper
         script: |
@@ -152,6 +207,13 @@ workflows:
             echo "ERROR: gradle-wrapper.jar still missing"
             exit 1
           fi
+          
+          # 再次验证 MC JAR 是否存在
+          if [ ! -f "libs/minecraft-26.2-client.jar" ]; then
+            echo "ERROR: Minecraft Client JAR not found before build"
+            exit 1
+          fi
+          
           echo "Building mod jar with Java 25 and Gradle 9.5.1..."
           ./gradlew clean build --no-daemon --stacktrace \
             -Dorg.gradle.java.home=$JAVA_HOME \
