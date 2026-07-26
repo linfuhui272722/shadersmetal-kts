@@ -5,7 +5,7 @@ import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     id("java")
-    id("net.fabricmc.fabric-loom") version("1.17.13")
+    id("net.fabricmc.fabric-loom") version("1.17-SNAPSHOT")
     id("maven-publish")
 }
 
