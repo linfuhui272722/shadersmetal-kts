@@ -55,7 +55,7 @@ loom {
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:${minecraftVersion}")
+    add("minecraft", files("libs/minecraft-26.2-client.jar"))
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
     
