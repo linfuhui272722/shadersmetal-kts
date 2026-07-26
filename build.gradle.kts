@@ -9,62 +9,31 @@ plugins {
     id("maven-publish")
 }
 
-// 定义版本变量
-val MINECRAFT_VERSION by extra { property("minecraft_version") as String }
-val JAVA_VERSION by extra { property("java_version") as String }
-val MOD_VERSION by extra { property("mod_version") as String }
-val ARCHIVES_BASE_NAME by extra { property("archives_base_name") as String }
-val LOADER_VERSION by extra { property("loader_version") as String }
-val FABRIC_VERSION by extra { property("fabric_version") as String }
-val MAVEN_GROUP by extra { property("maven_group") as String }
+// 从gradle.properties读取版本变量
+val minecraftVersion: String by project
+val javaVersion: String by project
+val modVersion: String by project
+val archivesBaseName: String by project
+val loaderVersion: String by project
+val fabricVersion: String by project
+val mavenGroup: String by project
 
-allprojects {
-    apply(plugin = "java")
-    apply(plugin = "maven-publish")
-    
-    // 应用 Loom 配置到所有项目，确保 Minecraft 依赖被正确加载
-    configure<net.fabricmc.loom.configuration.RemapConfigurationSettings> {
-        // 这一步确保 Minecraft jar 在 compileClasspath 上
-        // 注意：具体的 loom {} 块配置在下面单独处理
-    }
-    
-    repositories {
-        mavenCentral()
-        maven { url = uri("https://maven.fabricmc.net/") }
-        maven { url = uri("https://libraries.minecraft.net/") }
-        maven { url = uri("https://maven.caffeinemc.net/releases") }
-    }
+group = mavenGroup
+version = modVersion
+base.archivesName.set(archivesBaseName)
 
-    dependencies {
-        // Minecraft 依赖
-        minecraft("com.mojang:minecraft:${MINECRAFT_VERSION}")
-        
-        // Fabric Loader + Fabric API
-        implementation("net.fabricmc:fabric-loader:${LOADER_VERSION}")
-        implementation("net.fabricmc.fabric-api:fabric-api:${FABRIC_VERSION}")
-        
-        // 本地依赖
-        implementation(files("libs/metallum-1.0.1.jar"))
-        compileOnly(files("libs/sodium-fabric-0.9.1+mc26.2.jar"))
-    }
-
-    java {
-        toolchain {
-            languageVersion = JavaLanguageVersion.of(JAVA_VERSION.toInt())
-        }
-        withSourcesJar()
-        sourceCompatibility = JavaVersion.toVersion(JAVA_VERSION.toInt())
-        targetCompatibility = JavaVersion.toVersion(JAVA_VERSION.toInt())
-    }
-
-    tasks.withType<JavaCompile> {
-        options.encoding = "UTF-8"
-        options.release.set(JAVA_VERSION.toInt())
-    }
+repositories {
+    mavenCentral()
+    maven { url = uri("https://maven.fabricmc.net/") }
+    maven { url = uri("https://libraries.minecraft.net/") }
+    maven { url = uri("https://maven.caffeinemc.net/releases") }
 }
 
-// 根项目特定的 Loom 配置和任务配置
 loom {
+    // 不使用 splitEnvironmentSourceSets()。
+    // 所有代码（含客户端代码）都在 src/main/java/ 下，
+    // main 源集需要看到 net.minecraft.client.* 类。
+    // Loom 会自动把 Minecraft merged jar 加到 main 源集的编译类路径上。
     mods {
         register("metallum_shaders") {
             sourceSet("main")
@@ -78,16 +47,38 @@ loom {
     }
 }
 
-base {
-    archivesName.set(ARCHIVES_BASE_NAME)
+dependencies {
+    // Minecraft 26.2 —— 无混淆，不需要 mappings 依赖。
+    // Loom 会自动下载 MC jar、合并 client+server、加到 compileClasspath。
+    minecraft("com.mojang:minecraft:${minecraftVersion}")
+
+    // Fabric Loader + Fabric API
+    // 用 implementation（非 modImplementation）。MC 26.2 无混淆，
+    // Loom 不需要做 remap，implementation 即可。
+    implementation("net.fabricmc:fabric-loader:${loaderVersion}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
+
+    // Metallum —— Metal API 桥接 mod（本地 jar）
+    implementation(files("libs/metallum-1.0.1.jar"))
+
+    // Sodium —— 仅编译期依赖，不打包进 jar
+    compileOnly(files("libs/sodium-fabric-0.9.1+mc26.2.jar"))
 }
 
-group = MAVEN_GROUP
-version = property("mod_version") as String
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(javaVersion.toInt())
+        vendor = JvmVendorSpec.ADOPTIUM
+    }
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.toVersion(javaVersion.toInt())
+    targetCompatibility = JavaVersion.toVersion(javaVersion.toInt())
+}
 
-// 子项目配置（如果将来拆分子项目，会生效）
-subprojects {
-    // 可以在这里覆盖子项目的特定配置
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+    // 修复：使用 project.property 读取属性，避免在任务lambda中属性查找错误
+    options.release.set(project.property("java_version").toString().toInt())
 }
 
 tasks.withType<ProcessResources> {
@@ -100,6 +91,7 @@ tasks.withType<ProcessResources> {
 
 // ===========================================================================
 // Native build: 编译 JNI shim 为 libmetallum_shaders.dylib
+// 仅在 macOS 上编译；非 macOS 跳过（jar 仍能构建，只是没有 dylib）。
 // ===========================================================================
 
 val nativeSrcDir = layout.projectDirectory.dir("src/main/cpp")
