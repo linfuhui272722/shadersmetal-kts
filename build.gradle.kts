@@ -68,8 +68,10 @@ dependencies {
     implementation(files("libs/minecraft-26.2-client.jar"))
 }
 // 强制将本地 Minecraft 客户端 jar 加入编译 classpath
-tasks.named<JavaCompile>("compileJava") {
-    classpath = classpath.plus(files("libs/minecraft-26.2-client.jar"))
+afterEvaluate {
+    tasks.named<JavaCompile>("compileJava") {
+        classpath += files("libs/minecraft-26.2-client.jar")
+    }
 }
 java {
     toolchain {
