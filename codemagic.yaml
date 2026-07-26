@@ -163,7 +163,13 @@ workflows:
           cp build/native/macos-arm64/libmetallum_shaders.dylib \
             src/main/resources/native/macos-arm64/
           echo "Native arm64 dylib built and bundled."
-
+          echo "=== Verify Minecraft jar ==="
+          ls -lh libs/minecraft-26.2-client.jar || exit 1
+          jar tf libs/minecraft-26.2-client.jar | grep "net/minecraft/client/MinecraftClient.class" || {
+             echo "Minecraft jar does not contain MinecraftClient.class - invalid or corrupted jar"
+             exit 1
+          }
+         echo "Minecraft jar verified."
       - name: Build mod jar
         script: |
           #!/usr/bin/env bash
