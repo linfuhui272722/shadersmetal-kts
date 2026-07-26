@@ -31,8 +31,9 @@ repositories {
 }
 
 loom {
-    enableTransitiveAccessWideners = true  // ✅ 正确的属性名（注意是复数 Wideners）
-
+    // 修复：使用正确的属性名（复数形式）
+    enableTransitiveAccessWideners = true
+    
     mods {
         register("metallum_shaders") {
             sourceSet("main")
@@ -50,13 +51,15 @@ dependencies {
     minecraft("com.mojang:minecraft:${minecraftVersion}")
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
+    
+    // 本地依赖
     implementation(files("libs/metallum-1.0.1.jar"))
     compileOnly(files("libs/sodium-fabric-0.9.1+mc26.2.jar"))
-}
-configurations {
-    // 强制让 'main' 源集的编译路径继承 'client' 源集的依赖
-    // 这样就能在 src/main/java 里直接编译 net.minecraft.client.xxx 的代码
-    configurations.getByName("compileClasspath").extendsFrom(configurations.getByName("clientCompileClasspath"))
+
+    // 强制注入手动下载的 Minecraft 客户端 Jar
+    // 对应 codemagic.yaml 中的下载步骤
+    // 这绕过了 Loom 可能存在的依赖解析问题，直接提供客户端类
+    compileOnly(files("libs/minecraft-${minecraftVersion}-client.jar"))
 }
 
 java {
