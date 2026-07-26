@@ -146,16 +146,7 @@ val buildNative by tasks.registering {
     description = "Compile the Metal JNI shim (ARM64 only)."
     dependsOn(buildNativeArm64)
 }
-// build.gradle.kts
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
-    }
-}
 
-tasks.withType<JavaCompile> {
-    options.release.set(25)
-}
 val copyNativeToResources by tasks.registering(Copy::class) {
     group = "build"
     dependsOn(buildNativeArm64)
