@@ -33,6 +33,7 @@ repositories {
 loom {
     // 修复：使用正确的属性名（复数形式）
     enableTransitiveAccessWideners = true
+    accessWidenerPath = file("src/main/resources/metallum.accesswidener")
     
     mods {
         register("metallum_shaders") {
