@@ -38,6 +38,7 @@ loom {
     mods {
         register("metallum_shaders") {
             sourceSet("main")
+            sourceSet("client")
         }
     }
 
