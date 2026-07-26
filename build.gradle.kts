@@ -48,7 +48,7 @@ loom {
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:${minecraftVersion}")
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
     
@@ -59,7 +59,7 @@ dependencies {
     // 强制注入手动下载的 Minecraft 客户端 Jar
     // 对应 codemagic.yaml 中的下载步骤
     // 这绕过了 Loom 可能存在的依赖解析问题，直接提供客户端类
-    compileOnly(files("libs/minecraft-${minecraftVersion}-client.jar"))
+    //compileOnly(files("libs/minecraft-${minecraftVersion}-client.jar"))
 }
 
 java {
