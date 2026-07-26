@@ -25,6 +25,8 @@ base.archivesName.set(archivesBaseName)
 
 repositories {
     mavenCentral()
+maven { name = "LocalMinecraft"
+        url = uri("file://${project.projectDir}/maven_repo") }
     maven { url = uri("https://maven.fabricmc.net/") }
     maven { url = uri("https://libraries.minecraft.net/") }
     maven { url = uri("https://maven.caffeinemc.net/releases") }
@@ -53,7 +55,7 @@ loom {
 }
 
 dependencies {
-    //minecraft("com.mojang:minecraft:26.2")
+    minecraft("com.mojang:minecraft:${minecraftVersion}")
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
     
@@ -64,7 +66,7 @@ dependencies {
     // 强制注入手动下载的 Minecraft 客户端 Jar
     // 对应 codemagic.yaml 中的下载步骤
     // 这绕过了 Loom 可能存在的依赖解析问题，直接提供客户端类
-    implementation(files("libs/minecraft-26.2-client.jar"))
+    //implementation(files("libs/minecraft-26.2-client.jar"))
 }
 
 java {
