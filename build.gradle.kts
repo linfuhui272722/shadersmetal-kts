@@ -9,14 +9,15 @@ plugins {
     id("maven-publish")
 }
 
-// 从gradle.properties读取版本变量
-val minecraftVersion: String by project
-val javaVersion: String by project
-val modVersion: String by project
-val archivesBaseName: String by project
-val loaderVersion: String by project
-val fabricVersion: String by project
-val mavenGroup: String by project
+// 使用 property("键名") 从 gradle.properties 读取属性
+// 确保键名与您的 gradle.properties 文件中的定义完全一致（如 maven_group）
+val mavenGroup = property("maven_group") as String
+val modVersion = property("mod_version") as String
+val archivesBaseName = property("archives_base_name") as String
+val minecraftVersion = property("minecraft_version") as String
+val javaVersion = property("java_version") as String
+val loaderVersion = property("loader_version") as String
+val fabricVersion = property("fabric_version") as String
 
 group = mavenGroup
 version = modVersion
@@ -30,10 +31,6 @@ repositories {
 }
 
 loom {
-    // 不使用 splitEnvironmentSourceSets()。
-    // 所有代码（含客户端代码）都在 src/main/java/ 下，
-    // main 源集需要看到 net.minecraft.client.* 类。
-    // Loom 会自动把 Minecraft merged jar 加到 main 源集的编译类路径上。
     mods {
         register("metallum_shaders") {
             sourceSet("main")
@@ -48,20 +45,10 @@ loom {
 }
 
 dependencies {
-    // Minecraft 26.2 —— 无混淆，不需要 mappings 依赖。
-    // Loom 会自动下载 MC jar、合并 client+server、加到 compileClasspath。
     minecraft("com.mojang:minecraft:${minecraftVersion}")
-
-    // Fabric Loader + Fabric API
-    // 用 implementation（非 modImplementation）。MC 26.2 无混淆，
-    // Loom 不需要做 remap，implementation 即可。
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
-
-    // Metallum —— Metal API 桥接 mod（本地 jar）
     implementation(files("libs/metallum-1.0.1.jar"))
-
-    // Sodium —— 仅编译期依赖，不打包进 jar
     compileOnly(files("libs/sodium-fabric-0.9.1+mc26.2.jar"))
 }
 
@@ -77,7 +64,7 @@ java {
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
-    // 修复：使用 project.property 读取属性，避免在任务lambda中属性查找错误
+    // 在任务lambda中，使用 project.property 来确保属性查找正确
     options.release.set(project.property("java_version").toString().toInt())
 }
 
@@ -91,7 +78,6 @@ tasks.withType<ProcessResources> {
 
 // ===========================================================================
 // Native build: 编译 JNI shim 为 libmetallum_shaders.dylib
-// 仅在 macOS 上编译；非 macOS 跳过（jar 仍能构建，只是没有 dylib）。
 // ===========================================================================
 
 val nativeSrcDir = layout.projectDirectory.dir("src/main/cpp")
@@ -146,7 +132,6 @@ val buildNative by tasks.registering {
     dependsOn(buildNativeArm64)
 }
 
-// 把 dylib 复制到 resources 目录，让 jar 自动打包
 val copyNativeToResources by tasks.registering(Copy::class) {
     group = "build"
     dependsOn(buildNativeArm64)
