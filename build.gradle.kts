@@ -53,7 +53,7 @@ loom {
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:26.2}")
+    minecraft("com.mojang:minecraft:26.2")
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
     
