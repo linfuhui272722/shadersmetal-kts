@@ -5,12 +5,10 @@ import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     id("java")
-    id("net.fabricmc.fabric-loom") version("1.17-SNAPSHOT")
+    id("net.fabricmc.fabric-loom") version("1.17.17")
     id("maven-publish")
 }
 
-// 使用 property("键名") 从 gradle.properties 读取属性
-// 确保键名与您的 gradle.properties 文件中的定义完全一致（如 maven_group）
 val mavenGroup = property("maven_group") as String
 val modVersion = property("mod_version") as String
 val archivesBaseName = property("archives_base_name") as String
@@ -24,16 +22,17 @@ version = modVersion
 base.archivesName.set(archivesBaseName)
 
 repositories {
+    maven {
+        name = "LocalMinecraft"
+        url = uri("file://${project.projectDir}/maven_repo")
+    }
     mavenCentral()
-maven { name = "LocalMinecraft"
-        url = uri("file://${project.projectDir}/maven_repo") }
     maven { url = uri("https://maven.fabricmc.net/") }
-    //maven { url = uri("https://libraries.minecraft.net/") }
     maven { url = uri("https://maven.caffeinemc.net/releases") }
 }
+
 sourceSets {
     create("client") {
-        // 让 client 源集能够访问 main 源集的类
         compileClasspath += sourceSets.main.get().compileClasspath
         runtimeClasspath += sourceSets.main.get().runtimeClasspath
     }
@@ -44,10 +43,9 @@ loom {
     mods {
         register("metallum_shaders") {
             sourceSet(sourceSets.main.get())
-            sourceSet(sourceSets.named("client").get())  // 正确引用
+            sourceSet(sourceSets.named("client").get())
         }
     }
-
     mixin {
         defaultRefmapName.set("metallum_shaders.refmap.json")
     }
@@ -57,37 +55,12 @@ dependencies {
     minecraft("com.mojang:minecraft:26.2")
     implementation("net.fabricmc:fabric-loader:${loaderVersion}")
     implementation("net.fabricmc.fabric-api:fabric-api:${fabricVersion}")
-    
-    // 本地依赖
+
     implementation(files("libs/metallum-1.0.1.jar"))
     compileOnly(files("libs/sodium-fabric-0.9.1+mc26.2.jar"))
-
-    // 强制注入手动下载的 Minecraft 客户端 Jar
-    // 对应 codemagic.yaml 中的下载步骤
-    // 这绕过了 Loom 可能存在的依赖解析问题，直接提供客户端类
     implementation(files("libs/minecraft-26.2-client.jar"))
 }
-// 强制将本地 Minecraft 客户端 jar 加入编译 classpathafterEvaluate {
-tasks.named<JavaCompile>("compileJava") {
-        // 在任务执行前，将本地 Minecraft jar 强制插入 classpath
-    doFirst {
-            val minecraftJar = file("libs/minecraft-26.2-client.jar")
-            if (minecraftJar.exists()) {
-                logger.lifecycle("=== Manually adding Minecraft jar to compileJava classpath ===")
-                // 获取当前 classpath 的 FileCollection，并将 jar 加入
-                val originalClasspath = classpath
-                classpath = files(minecraftJar) + originalClasspath
-                // 打印完整 classpath 用于验证
-                logger.lifecycle("=== Final compileJava classpath ===")
-                classpath.files.forEach { file ->
-                    logger.lifecycle(file.absolutePath)
-                }
-            } else {
-            throw GradleException("Minecraft client jar not found at ${minecraftJar.absolutePath}")
-            }
-        }
-    }
-}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(javaVersion.toInt())
@@ -100,7 +73,6 @@ java {
 
 tasks.withType<JavaCompile> {
     options.encoding = "UTF-8"
-    // 在任务lambda中，使用 project.property 来确保属性查找正确
     options.release.set(project.property("java_version").toString().toInt())
 }
 
@@ -111,10 +83,6 @@ tasks.withType<ProcessResources> {
         expand(mapOf("version" to project.version))
     }
 }
-
-// ===========================================================================
-// Native build: 编译 JNI shim 为 libmetallum_shaders.dylib
-// ===========================================================================
 
 val nativeSrcDir = layout.projectDirectory.dir("src/main/cpp")
 val nativeOutDir = layout.buildDirectory.dir("native")
@@ -179,5 +147,19 @@ tasks.named<Jar>("jar") {
     dependsOn(buildNativeArm64)
     from(macosArmDylib) {
         into("native/macos-arm64")
+    }
+}
+
+// 强制将本地 Minecraft 客户端 jar 加入编译 classpath
+afterEvaluate {
+    tasks.named<JavaCompile>("compileJava") {
+        doFirst {
+            val minecraftJar = file("libs/minecraft-26.2-client.jar")
+            if (minecraftJar.exists()) {
+                classpath = files(minecraftJar) + classpath
+            } else {
+                throw GradleException("Minecraft client jar not found at ${minecraftJar.absolutePath}")
+            }
+        }
     }
 }
