@@ -84,7 +84,6 @@ workflows:
           JAR_FILE="libs/minecraft-26.2-client.jar"
           if [ ! -f "$JAR_FILE" ]; then
             echo "Minecraft client jar not found, downloading..."
-            # Fetch the download URL from the version manifest
             VERSION_MANIFEST=$(curl -s "https://piston-meta.mojang.com/v1/packages/d98675ecc24364e90b18dbea80390b1345c3f71f/26.2.json")
             CLIENT_URL=$(echo "$VERSION_MANIFEST" | jq -r '.downloads.client.url')
             if [ -z "$CLIENT_URL" ] || [ "$CLIENT_URL" == "null" ]; then
@@ -104,7 +103,6 @@ workflows:
           LOCAL_REPO="maven_repo"
           mkdir -p "${LOCAL_REPO}/com/mojang/minecraft/26.2"
           cp libs/minecraft-26.2-client.jar "${LOCAL_REPO}/com/mojang/minecraft/26.2/minecraft-26.2.jar"
-          # Create a minimal POM so Loom sees this as a valid dependency
           cat > "${LOCAL_REPO}/com/mojang/minecraft/26.2/minecraft-26.2.pom" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
@@ -163,13 +161,19 @@ workflows:
           cp build/native/macos-arm64/libmetallum_shaders.dylib \
             src/main/resources/native/macos-arm64/
           echo "Native arm64 dylib built and bundled."
+
+      - name: Verify Minecraft JAR
+        script: |
+          #!/usr/bin/env bash
+          set -e
           echo "=== Verify Minecraft jar ==="
           ls -lh libs/minecraft-26.2-client.jar || exit 1
           jar tf libs/minecraft-26.2-client.jar | grep "net/minecraft/client/MinecraftClient.class" || {
-             echo "Minecraft jar does not contain MinecraftClient.class - invalid or corrupted jar"
-             exit 1
+            echo "Minecraft jar does not contain MinecraftClient.class - invalid or corrupted jar"
+            exit 1
           }
-         echo "Minecraft jar verified."
+          echo "Minecraft jar verified."
+
       - name: Build mod jar
         script: |
           #!/usr/bin/env bash
