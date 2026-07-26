@@ -31,30 +31,25 @@ repositories {
 }
 sourceSets {
     create("client") {
+        // 让 client 源集能够访问 main 源集的类
         compileClasspath += sourceSets.main.get().compileClasspath
         runtimeClasspath += sourceSets.main.get().runtimeClasspath
     }
 }
-loom {
-    // 如果确实需要 transitive AW（一般默认开启，可省略）
-    enableTransitiveAccessWideners = true  // 如果找不到这个属性就删掉
 
+loom {
     accessWidenerPath = file("src/main/resources/metallum.accesswidener")
 
     mods {
         register("metallum_shaders") {
             sourceSet(sourceSets.main.get())
-            sourceSet(sourceSets.client.get())
+            sourceSet(sourceSets.named("client").get())  // 正确引用
         }
     }
 
-    // 如果不需要 mixin 注解处理器，可以完全删除 mixin 块
-    // 如果需要配置 refmap，保留下面这段
     mixin {
         defaultRefmapName.set("metallum_shaders.refmap.json")
     }
-
-    // 如果不想用旧的 mixin AP，这一行其实可以省略（默认就是 false）
 }
 
 dependencies {
